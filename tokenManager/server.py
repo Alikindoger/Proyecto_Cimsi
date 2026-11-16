@@ -1,0 +1,118 @@
+import asyncio
+import websockets
+import json
+import secrets
+import time
+
+## UNA VEZ LEVANTADO EL SERVER DECIRLE A ALFONSO LA IP INTERNA Y ABRIR EL PUERTO 9100 PARA PROMETHEUS
+## MI APLICACION CORRE POR DEFECTO EN EL PUERTO 8765
+
+TOKEN_INACTIVO = 900  #Si un token no está activo (recién generado) se dispone de 15 minutos para usarlo
+TOKEN_ACTIVO = 60*60*24 #Si un token está activo, es válido por un día
+
+connected_players, tokens = set(), dict()
+
+async def validate_token(token):
+    if not isinstance(token, str) or not token:
+        return False
+
+    # TODO: Conectar con DB en el futuro
+    await asyncio.sleep(0.2)  # Simulacion de consulta
+    clean_expired_tokens()
+    return token in tokens
+
+async def generate_new_token(player_name):
+    # Elegimos esta generación de 32 bytes ya que es más seguro y es el estándar para tokens
+    random_code = secrets.token_urlsafe(32) 
+    final_token = f"token_{player_name}_{random_code}"
+
+    # TODO: Cuando José (PostgreSQL) o Pablo (Redis) tengan lista su parte, 
+    # aquí añadirás la línea para insertar 'final_token' en sus bases de datos.
+
+    print(f"[*] Nuevo token fabricado para {player_name}: {final_token}")
+    return final_token
+
+async def manage_connections(websocket):
+    try:
+        initial_message = await websocket.recv() #Se queda esperando hasta el primer mensaje del cliente
+        data_in = json.loads(initial_message) #Carga este primer mensaje
+        if not isinstance(data_in, dict):
+            await websocket.send(json.dumps({"tipo": "error", "mensaje": "Formato inválido."}))
+            await websocket.close()
+            return
+        
+        if data_in.get("accion") == "solicitar_token":
+            player_name = data_in.get("nombre") #Coge el nombre de este cliente
+            clean_expired_tokens()
+            used_names = {d["nombre"] for d in tokens.values()}
+            if player_name in used_names: #Si ya existe el nombre, fuera
+                await websocket.send(json.dumps({"tipo":"error", "mensaje":"Nombre no disponible, prueba con otro"}))
+                await websocket.close()
+                return
+            elif not player_name:
+                await websocket.send(json.dumps({"tipo":"error", "mensaje":"Nombre vacío"}))
+                await websocket.close()
+                return
+            elif not isinstance(player_name, str):
+                await websocket.send(json.dumps({"tipo":"error", "mensaje":"Formato de texto inválido"}))
+                await websocket.close()
+                return
+            
+            new_token = await generate_new_token(player_name)
+            tokens[new_token] = {"nombre":player_name, "expira":time.time() + TOKEN_INACTIVO}
+            
+            await websocket.send(json.dumps({"tipo": "registro", "token": new_token}))
+            await websocket.close()
+            return
+            
+        elif data_in.get("accion") == "jugar":
+            recieved_token = data_in.get("token")
+            is_valid = await validate_token(recieved_token)
+
+            if not is_valid:
+                await websocket.send(json.dumps({"tipo": "error", "mensaje": "Token inválido o expirado."}))
+                await websocket.close()
+                return
+            tokens[recieved_token]["expira"] = time.time() + TOKEN_ACTIVO 
+            connected_players.add(websocket)
+            print(f"[+] Nuevo jugador validado. Total en línea: {len(connected_players)}")
+            await websocket.send(json.dumps({"tipo": "sistema", "mensaje": "Acceso concedido"}))
+
+            async for message in websocket:
+                try:
+                    data = json.loads(message)
+                except json.JSONDecodeError:
+                    continue
+                if not isinstance(data, dict):
+                    await websocket.send(json.dumps({"tipo": "error", "mensaje": "Formato inválido."}))
+                    await websocket.close()
+                    return
+                print(f"Recibido de un jugador: {data}")
+                websockets.broadcast(connected_players - {websocket}, message) #Se envía 
+                        
+        else:
+            await websocket.send(json.dumps({"tipo": "error", "mensaje": "Acción no reconocida."}))
+            await websocket.close()
+            return
+
+    except websockets.exceptions.ConnectionClosed:
+        pass
+    except json.JSONDecodeError:
+        print("Alerta: Se recibió un mensaje que no es formato JSON válido.")
+    finally:
+        if websocket in connected_players:
+            connected_players.remove(websocket)
+            print(f"[-] Jugador desconectado. Total en línea: {len(connected_players)}")
+
+async def main():
+    async with websockets.serve(manage_connections, "0.0.0.0", 8765):
+        print("Servidor de Tokens iniciado y escuchando en el puerto 8765...")
+        await asyncio.Future()
+
+def clean_expired_tokens():
+    now = time.time()
+    for t in [t for t, d in tokens.items() if d["expira"] < now]:
+        del tokens[t]
+
+if __name__ == "__main__":
+    asyncio.run(main())
