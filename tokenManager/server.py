@@ -59,7 +59,7 @@ async def manage_connections(websocket):
                 return
             
             new_token = await generate_new_token(player_name) # Si todo ha salido bien, creamos el token para este usuario
-            tokens[new_token] = {"nombre":player_name, "expira":time.time() + TOKEN_INACTIVO} # Guardamos el nombre de usuario como valor y su token como clave
+            tokens[new_token] = {"nombre":player_name, "expira":time.time() + TOKEN_INACTIVO} # Guardamos el token como clave y un diccionario con nombre y cuando expira como valor
             
             await websocket.send(json.dumps({"tipo": "registro", "token": new_token}))
             await websocket.close()
