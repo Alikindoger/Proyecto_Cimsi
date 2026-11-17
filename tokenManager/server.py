@@ -37,7 +37,7 @@ async def manage_connections(websocket):
         initial_message = await websocket.recv() #Se queda esperando hasta el primer mensaje del cliente
         data_in = json.loads(initial_message) #Carga este primer mensaje
         if not isinstance(data_in, dict): #Si los datos no siguen el formato JSON (Diccionario), falla
-            await websocket.send(json.dumps({"tipo": "error", "mensaje": "Formato inválido."}))
+            await websocket.send(json.dumps({"TYPE": "error", "mensaje": "Formato inválido."}))
             await websocket.close()
             return
         
@@ -46,22 +46,22 @@ async def manage_connections(websocket):
             clean_expired_tokens() # Se debe eliminar los token expirados
             used_names = {d["nombre"] for d in tokens.values()} # Creamos una memoria de nombres seleccionados para que no se repitan
             if player_name in used_names: #Si ya existe el nombre, fuera
-                await websocket.send(json.dumps({"tipo":"error", "mensaje":"Nombre no disponible, prueba con otro"}))
+                await websocket.send(json.dumps({"TYPE":"error", "mensaje":"Nombre no disponible, prueba con otro"}))
                 await websocket.close()
                 return
             elif not player_name: # Si no hay nombre, fuera
-                await websocket.send(json.dumps({"tipo":"error", "mensaje":"Nombre vacío"}))
+                await websocket.send(json.dumps({"TYPE":"error", "mensaje":"Nombre vacío"}))
                 await websocket.close()
                 return
             elif not isinstance(player_name, str): # Si el texto no sigue el formato texto, fuera
-                await websocket.send(json.dumps({"tipo":"error", "mensaje":"Formato de texto inválido"}))
+                await websocket.send(json.dumps({"TYPE":"error", "mensaje":"Formato de texto inválido"}))
                 await websocket.close()
                 return
             
             new_token = await generate_new_token(player_name) # Si todo ha salido bien, creamos el token para este usuario
             tokens[new_token] = {"nombre":player_name, "expira":time.time() + TOKEN_INACTIVO} # Guardamos el token como clave y un diccionario con nombre y cuando expira como valor
             
-            await websocket.send(json.dumps({"tipo": "registro", "token": new_token}))
+            await websocket.send(json.dumps({"TYPE": "registro", "token": new_token}))
             await websocket.close()
             return
             
@@ -70,13 +70,13 @@ async def manage_connections(websocket):
             is_valid = await validate_token(recieved_token) # Validamos el token por si ha expirado
 
             if not is_valid: # Si se decide que el token no es válido (ha caducado), fuera
-                await websocket.send(json.dumps({"tipo": "error", "mensaje": "Token inválido o expirado."}))
+                await websocket.send(json.dumps({"TYPE": "error", "mensaje": "Token inválido o expirado."}))
                 await websocket.close()
                 return
             tokens[recieved_token]["expira"] = time.time() + TOKEN_ACTIVO # Cuando juegue, se reinicia el contador del token (1 día)
             connected_players.add(websocket) # Se añade el jugador a la memoria de jugadores conectados
             print(f"[V] Nuevo jugador validado. Online: {len(connected_players)}")
-            await websocket.send(json.dumps({"tipo": "sistema", "mensaje": "Acceso concedido"})) #Enviamos al cliente que puede jugar
+            await websocket.send(json.dumps({"TYPE": "sistema", "mensaje": "Acceso concedido"})) #Enviamos al cliente que puede jugar
 
             async for message in websocket: # Una vez validado y se esté jugando, esperamos nuevos mensajes mediante espera activa
                 try:
@@ -90,7 +90,7 @@ async def manage_connections(websocket):
                                                                                #(Por ejemplo que un jugador se ha movió)
                         
         else: # Si no es ninguna acción reconocida, manda el error correspondiente
-            await websocket.send(json.dumps({"tipo": "error", "mensaje": "Acción no reconocida."}))
+            await websocket.send(json.dumps({"TYPE": "error", "mensaje": "Acción no reconocida."}))
             await websocket.close()
             return
 
