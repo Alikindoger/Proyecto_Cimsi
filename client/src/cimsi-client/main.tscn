@@ -1,12 +1,26 @@
 [gd_scene format=3 uid="uid://eg82bfmclcfs"]
 
-[ext_resource type="PackedScene" uid="uid://csihi4rcf51ry" path="res://player.tscn" id="2_0xm2m"]
+[ext_resource type="PackedScene" uid="uid://bxmoisedc60db" path="res://game_manager.tscn" id="2_0xm2m"]
+[ext_resource type="Script" uid="uid://difsyft662cij" path="res://connection_button.gd" id="2_h2yge"]
 
 [node name="_Node2D_52" type="Node2D" unique_id=1932720807]
 metadata/_tc_uuid = "450217506875145952"
 metadata/scene_file_path = "res://main.tscn"
 
-[node name="Player" parent="." unique_id=977924291 instance=ExtResource("2_0xm2m")]
-
 [node name="Camera2D" type="Camera2D" parent="." unique_id=2016863825]
 zoom = Vector2(4, 4)
+
+[node name="Button" type="Button" parent="." unique_id=240994762]
+offset_left = 93.00001
+offset_top = -72.0
+offset_right = 165.0
+offset_bottom = -41.0
+scale = Vector2(0.6349195, 0.548386)
+text = "Connect"
+script = ExtResource("2_h2yge")
+
+[node name="hi" type="Node2D" parent="." unique_id=1711096838]
+
+[node name="GameManager" parent="." unique_id=244391308 instance=ExtResource("2_0xm2m")]
+
+[connection signal="button_down" from="Button" to="Button" method="_on_button_down"]
