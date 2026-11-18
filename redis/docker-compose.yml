@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    command: redis-server /usr/local/etc/redis/redis.conf
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
+      - redis_data:/data
+    restart: unless-stopped
+
+  # Exportador de métricas Prometheus
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: redis-exporter
+    environment:
+      - REDIS_ADDR=redis://redis:6379
+      - REDIS_PASSWORD=cimsi2627
+    ports:
+      - "9121:9121"
+    depends_on:
+      - redis
+
+volumes:
+  redis_data:
