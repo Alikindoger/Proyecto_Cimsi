@@ -1,0 +1,48 @@
+version: '3.8'
+
+# ==============================================================================
+# ENTORNO LOCAL DE DESARROLLO (DOCKER COMPOSE)
+# ==============================================================================
+# Uso: docker compose up -d
+# Permite probar la base de datos y esquemas en local antes del despliegue en Swarm.
+
+services:
+  postgres:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: cimsi-postgres:local
+    container_name: cimsi_postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-cimsi_game}
+      POSTGRES_USER: ${POSTGRES_USER:-cimsi_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cimsi2627}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      # Expuesto ÚNICAMENTE en localhost para desarrollo (DBeaver, psql local, etc.)
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - ./init:/docker-entrypoint-initdb.d:ro
+      - postgres_dev_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Exportador de métricas Prometheus para pruebas locales de monitorización (Alfonso)
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: cimsi_postgres_exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER:-cimsi_user}:${POSTGRES_PASSWORD:-cimsi2627}@postgres:5432/${POSTGRES_DB:-cimsi_game}?sslmode=disable"
+    ports:
+      - "127.0.0.1:9187:9187"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_dev_data:

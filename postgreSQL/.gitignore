@@ -1,0 +1,19 @@
+# Datos persistentes locales
+data/
+*.db
+*.sqlite
+
+# Archivos de entorno con credenciales sensibles
+.env
+!.env.example
+
+# Logs y backups
+*.log
+backups/
+*.sql.gz
+*.sql.bak
+
+# Python cache (para ejemplos de conexión)
+__pycache__/
+*.py[cod]
+.venv/

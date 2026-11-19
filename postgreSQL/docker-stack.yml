@@ -1,0 +1,89 @@
+version: '3.8'
+
+# ==============================================================================
+# DESPLIEGUE EN PRODUCCIÓN - DOCKER SWARM (6 RASPBERRY PI)
+# ==============================================================================
+# Responsable: José (PostgreSQL)
+# Criterio M10 (Distribución y consenso) y M8 (Automatización / Labels)
+#
+# REQUISITOS PREVIOS EN WORKER 1:
+# 1. Almacenamiento SSD/USB montado en: /mnt/ssd/postgres_data
+# 2. Etiqueta Swarm asignada por Miembro 6 / Ansible:
+#    docker node update --label-add db=postgres <ID_DEL_NODO_WORKER_1>
+# 3. Red Overlay creada previamente en el cluster:
+#    docker network create --driver overlay --attachable cimsi_net
+# ==============================================================================
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: cimsi_game
+      POSTGRES_USER: cimsi_user
+      POSTGRES_PASSWORD: cimsi2627
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      # Persistencia obligatoria en disco SSD/USB externo de Worker 1 (M10 / SD Protection)
+      - postgres_ssd_data:/var/lib/postgresql/data
+      # Scripts de esquema e inicialización (se ejecutan en el primer arranque)
+      - ./init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - cimsi_net
+    # ============================================================================
+    # SEGURIDAD CRÍTICA:
+    # Queda ESTRICTAMENTE PROHIBIDO mapear puertos al host (ports: - "5432:5432").
+    # La comunicación con Python Backend, TokenManager y Exporter es 100% interna
+    # a través de la red Overlay (cimsi_net) usando el hostname 'postgres:5432'.
+    # ============================================================================
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == worker
+          - node.labels.db == postgres
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 60s
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 768M
+        reservations:
+          cpus: '0.2'
+          memory: 256M
+
+  # Exportador de métricas Prometheus para observabilidad (Alfonso - Manager 3)
+  # Expone métricas en http://postgres-exporter:9187/metrics dentro de cimsi_net
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    environment:
+      DATA_SOURCE_NAME: "postgresql://cimsi_user:cimsi2627@postgres:5432/cimsi_game?sslmode=disable"
+    networks:
+      - cimsi_net
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == worker
+          - node.labels.db == postgres
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+
+volumes:
+  postgres_ssd_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /mnt/ssd/postgres_data
+
+networks:
+  cimsi_net:
+    external: true
