@@ -2,23 +2,37 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+rule_files:
+  - "alert.rules.yml"
+
 alerting:
   alertmanagers:
     - static_configs:
-        - targets: ['alertmanager:9093']
-
-rule_files:
-  - "alert.rules.yml"
+        - targets:
+            - "alertmanager:9093"
 
 scrape_configs:
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
 
-  - job_name: 'servidores'
+  - job_name: 'cluster-raspberry-pi'
     static_configs:
-      - targets:
-          - 'node-exporter:9100'
-          # Cuando tus compañeros te den sus IPs, solo tendrás que añadirlas aquí debajo:
-          # - '192.168.1.10:9100'
-          # - '192.168.1.11:9100'
+      - targets: ['192.168.1.12:9100']
+        labels:
+          nodo: 'token-manager'
+      - targets: ['192.168.1.13:9100']
+        labels:
+          nodo: 'load-manager-1'
+      - targets: ['192.168.1.14:9100']
+        labels:
+          nodo: 'load-manager-2'
+      - targets: ['192.168.1.15:9100']
+        labels:
+          nodo: 'worker-1'
+      - targets: ['192.168.1.16:9100']
+        labels:
+          nodo: 'worker-2'
+      - targets: ['192.168.1.18:9100']
+        labels:
+          nodo: 'db-manager'
