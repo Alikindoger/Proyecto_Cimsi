@@ -1,5 +1,21 @@
+global:
+  resolve_timeout: 5m
+
 route:
-  receiver: 'prueba-local'
+  group_by: ['alertname', 'instance']
+  group_wait: 10s
+  group_interval: 1m
+  repeat_interval: 1h
+  receiver: 'discord-alertas'
 
 receivers:
-  - name: 'prueba-local'
+  - name: 'discord-alertas'
+    discord_configs:
+      # Sustituir por el enlace Webhook real al desplegar en la Raspberry Pi (NO subir el enlace real a GitHub)
+      - webhook_url: 'https://discord.com/api/webhooks/TU_ID_AQUI/TU_TOKEN_AQUI'
+        title: '[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}'
+        message: |
+          {{ range .Alerts }}
+          **Servidor:** {{ .Labels.instance }}
+          **Detalle:** {{ .Annotations.description }}
+          {{ end }}

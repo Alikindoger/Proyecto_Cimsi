@@ -8,4 +8,31 @@ groups:
           severity: critical
         annotations:
           summary: "Servidor caído ({{ $labels.instance }})"
-          description: "El servidor {{ $labels.instance }} lleva más de 30 segundos sin responder."
+          description: "El nodo {{ $labels.instance }} lleva más de 30 segundos sin responder."
+
+      - alert: UsoAltoCPU
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[2m])) * 100) > 85
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU alta en {{ $labels.instance }}"
+          description: "El uso de CPU supera el 85% durante más de 2 minutos (valor actual: {{ printf \"%.1f\" $value }}%)."
+
+      - alert: PocaMemoriaRAM
+        expr: (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 < 15
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Poca memoria RAM disponible en {{ $labels.instance }}"
+          description: "Queda menos del 15% de RAM libre en el nodo (libre actual: {{ printf \"%.1f\" $value }}%)."
+
+      - alert: DiscoCasiLleno
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 10
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Disco casi lleno en {{ $labels.instance }}"
+          description: "Queda menos del 10% de espacio libre en la partición raíz (libre actual: {{ printf \"%.1f\" $value }}%)."
