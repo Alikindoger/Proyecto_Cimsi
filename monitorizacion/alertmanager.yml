@@ -1,0 +1,5 @@
+route:
+  receiver: 'prueba-local'
+
+receivers:
+  - name: 'prueba-local'

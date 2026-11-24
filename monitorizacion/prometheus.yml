@@ -1,0 +1,24 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+rule_files:
+  - "alert.rules.yml"
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'servidores'
+    static_configs:
+      - targets:
+          - 'node-exporter:9100'
+          # Cuando tus compañeros te den sus IPs, solo tendrás que añadirlas aquí debajo:
+          # - '192.168.1.10:9100'
+          # - '192.168.1.11:9100'

@@ -1,0 +1,11 @@
+groups:
+  - name: alertas_servidores
+    rules:
+      - alert: ServidorCaido
+        expr: up == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Servidor caído ({{ $labels.instance }})"
+          description: "El servidor {{ $labels.instance }} lleva más de 30 segundos sin responder."
