@@ -1,0 +1,40 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: cimsi_game
+      POSTGRES_USER: cimsi_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    configs:
+      - source: postgres_schema
+        target: /docker-entrypoint-initdb.d/01_schema.sql
+      - source: postgres_seed
+        target: /docker-entrypoint-initdb.d/02_seed.sql
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - cimsi_net
+    deploy:
+      replicas: 1
+
+volumes:
+  postgres_data:
+
+configs:
+  postgres_schema:
+    file: ../postgreSQL/init/01_schema.sql
+  postgres_seed:
+    file: ../postgreSQL/init/02_seed.sql
+
+secrets:
+  postgres_password:
+    external: true
+    name: cimsi_postgres_local_password
+
+networks:
+  cimsi_net:
+    external: true

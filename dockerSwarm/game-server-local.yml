@@ -1,0 +1,15 @@
+version: "3.8"
+
+services:
+  game-server:
+    image: cimsi-game-server:local-v2
+    environment:
+      GAME_HOST: "0.0.0.0"
+    networks:
+      - cimsi_net
+    deploy:
+      replicas: 1
+
+networks:
+  cimsi_net:
+    external: true
