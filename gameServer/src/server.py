@@ -1,9 +1,11 @@
 import asyncio
 import websockets
 import json
+import os
+from websockets.exceptions import ConnectionClosed
 
 # Parametros provisionales que se cambiarán cuando se despligue en la máquina
-ip = "127.0.0.1"
+ip = os.getenv("GAME_HOST", "127.0.0.1")
 port = 8081
 
 # Lista que guarda todas las conexiones (websockets) de los usuarios conectados
@@ -41,31 +43,29 @@ async def unicast(message,ws):
     await ws.send(json.dumps(message))
 
 # Manda mensaje a todos los usuarios (pudiendose exceptuar uno de forma opcional)
-async def broadcast(message, avoid_ws = -1):
-    for ws in connected_players:
-
-        if avoid_ws.id.int == ws.id.int:
+async def broadcast(message, avoid_ws=None):
+    for ws in connected_players.copy():
+        if ws is avoid_ws:
             continue
-        await ws.send(json.dumps(message))  # Envia el json al cliente
+        try:
+            await ws.send(json.dumps(message))
+        except ConnectionClosed:
+            continue  # Envia el json al cliente
 
 # Función que realiza todos los protocolos necesarios al conectarse un usuario
 async def handler(websocket):
-    # Debug
     print("¡Cliente conectado!")
-    
-    #comprobación token (por implementar)
-
-    # Se guarda la conexión entrante si el token es correcto
     connected_players.append(websocket)
-    
-    #envia toda al información a los 
-    await init(websocket)
-    await player_reset(websocket)
 
     try:
+        await init(websocket)
+        await player_reset(websocket)
+
         async for msg in websocket:
             print(msg)
-    except websockets.ConnectionClosed:
+    except ConnectionClosed:
+        pass
+    finally:
         await disconnect(websocket)
         
 async def main():

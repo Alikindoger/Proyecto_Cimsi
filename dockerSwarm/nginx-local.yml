@@ -1,0 +1,22 @@
+version: "3.8"
+
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8081:80"
+    configs:
+      - source: nginx_proxy
+        target: /etc/nginx/conf.d/default.conf
+    networks:
+      - cimsi_net
+    deploy:
+      replicas: 1
+
+configs:
+  nginx_proxy:
+    file: ./nginx-local.conf
+
+networks:
+  cimsi_net:
+    external: true
